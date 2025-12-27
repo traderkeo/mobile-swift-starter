@@ -2482,14 +2482,14 @@ wrangler d1 migrations apply starter-db --remote
 
 ### Phase 3: iOS App (Swift + StoreKit 2)
 
-- [ ] Create Xcode project in apps/ios
-- [ ] Implement SwiftUI theme (from Tailwind tokens)
-- [ ] Implement StoreManager with StoreKit 2
-- [ ] Connect to Hono API for auth
-- [ ] Implement server-side receipt validation
-- [ ] Build auth screens (login, signup, biometrics)
-- [ ] Build main screens (home, profile, settings)
-- [ ] Build paywall with product selection
+- [x] Create Xcode project in apps/ios
+- [x] Implement SwiftUI theme (from Tailwind tokens)
+- [x] Implement StoreManager with StoreKit 2
+- [x] Connect to Hono API for auth
+- [x] Implement server-side receipt validation
+- [x] Build auth screens (login, signup, biometrics)
+- [x] Build main screens (home, profile, settings)
+- [x] Build paywall with product selection
 - [ ] Implement widgets (home, lock screen, interactive)
 - [ ] Implement Live Activities
 - [ ] Add App Intents for Siri
