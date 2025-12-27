@@ -1,112 +1,59 @@
-name: Release & Build
+name: Release
 
 on:
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-      platform:
-        description: 'Platform to build'
-        required: true
-        default: 'all'
-        type: choice
-        options:
-          - all
-          - ios
-          - android
 
 env:
   NODE_VERSION: '20'
 
 jobs:
   # ============================================
-  # Deploy Production Edge Functions
+  # Deploy Production API to Cloudflare Workers
   # ============================================
   deploy-production:
-    name: Deploy Production
+    name: Deploy Production API
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
-      - name: Deploy Edge Functions
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: Run type checks
+        run: pnpm typecheck
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Deploy API to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: apps/api
+          command: deploy
+
+      - name: Output deployment info
         run: |
-          npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-          npx supabase functions deploy api
-
-  # ============================================
-  # Build iOS (requires EAS)
-  # ============================================
-  build-ios:
-    name: Build iOS
-    runs-on: ubuntu-latest
-    needs: deploy-production
-    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'ios' || github.event_name == 'release'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build iOS
-        run: eas build --platform ios --non-interactive --no-wait
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-  # ============================================
-  # Build Android (requires EAS)
-  # ============================================
-  build-android:
-    name: Build Android
-    runs-on: ubuntu-latest
-    needs: deploy-production
-    if: github.event.inputs.platform == 'all' || github.event.inputs.platform == 'android' || github.event_name == 'release'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Android
-        run: eas build --platform android --non-interactive --no-wait
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **API**: Deployed to Cloudflare Workers" >> $GITHUB_STEP_SUMMARY
+          echo "- **iOS App**: Build and submit via Xcode (apps/ios)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps for iOS" >> $GITHUB_STEP_SUMMARY
+          echo "1. Open \`apps/ios/SwiftStarter.xcodeproj\` in Xcode" >> $GITHUB_STEP_SUMMARY
+          echo "2. Archive and upload to App Store Connect" >> $GITHUB_STEP_SUMMARY
+          echo "3. Submit for review" >> $GITHUB_STEP_SUMMARY
