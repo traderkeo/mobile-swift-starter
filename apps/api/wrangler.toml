@@ -1,0 +1,47 @@
+name = "starter-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "development"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "starter-db"
+database_id = "local-dev-db"
+
+# KV for rate limiting and caching
+[[kv_namespaces]]
+binding = "CACHE"
+id = "local-cache-id"
+
+# Secrets (set via wrangler secret put)
+# JWT_SECRET - Required for auth tokens
+# JWT_REFRESH_SECRET - Required for refresh tokens
+# APPSTORE_KEY_ID - App Store Connect API Key ID
+# APPSTORE_ISSUER_ID - App Store Connect Issuer ID
+# APPSTORE_BUNDLE_ID - Your app's bundle ID
+# APPSTORE_PRIVATE_KEY - Your private key (.p8 contents)
+# APPSTORE_ENVIRONMENT - "sandbox" or "production"
+# STRIPE_SECRET_KEY - Stripe API secret key
+# STRIPE_WEBHOOK_SECRET - Stripe webhook signing secret
+
+[env.staging]
+name = "starter-api-staging"
+vars = { ENVIRONMENT = "staging" }
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "starter-db-staging"
+database_id = "your-staging-db-id"
+
+[env.production]
+name = "starter-api-production"
+vars = { ENVIRONMENT = "production" }
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "starter-db-production"
+database_id = "your-production-db-id"

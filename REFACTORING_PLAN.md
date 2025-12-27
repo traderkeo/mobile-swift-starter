@@ -2468,15 +2468,15 @@ wrangler d1 migrations apply starter-db --remote
 
 ### Phase 2: API Backend (Hono + Cloudflare)
 
-- [ ] Initialize Hono app with TypeScript
-- [ ] Set up Drizzle ORM with D1 schema
-- [ ] Implement auth routes (register, login, Apple Sign In)
-- [ ] Implement user routes
-- [ ] Implement subscription routes
-- [ ] Add App Store receipt validation service
-- [ ] Add Stripe webhook handler
-- [ ] Add Apple Server Notifications webhook
-- [ ] Configure rate limiting and CORS
+- [x] Initialize Hono app with TypeScript
+- [x] Set up Drizzle ORM with D1 schema
+- [x] Implement auth routes (register, login, Apple Sign In)
+- [x] Implement user routes
+- [x] Implement subscription routes
+- [x] Add App Store receipt validation service
+- [x] Add Stripe webhook handler
+- [x] Add Apple Server Notifications webhook
+- [x] Configure rate limiting and CORS
 - [ ] Write API tests
 - [ ] Deploy to Cloudflare Workers
 
