@@ -1,238 +1,581 @@
 # Mobile Starter Kit Refactoring Plan
 
-## Expo + RevenueCat → Native Swift + StoreKit 2
+## Expo + RevenueCat → Full-Stack Monorepo with Native Swift + StoreKit 2
 
 ### Executive Summary
 
-Transform the current Expo React Native app with RevenueCat into a **native Swift/SwiftUI iOS app** with Apple's StoreKit 2 for in-app purchases. The NativeWind design system will be preserved by translating Tailwind tokens into a SwiftUI theme system.
+Transform the current Expo React Native app with RevenueCat into a **full-stack monorepo** containing:
+
+1. **Native Swift/SwiftUI iOS app** with Apple StoreKit 2 for in-app purchases
+2. **Next.js web app** on Cloudflare Pages with Tailwind CSS
+3. **Hono API backend** on Cloudflare Workers
+4. **Shared packages** for types, validation, and utilities
+
+The Tailwind design system is preserved across all platforms - SwiftUI uses translated design tokens while web uses native Tailwind.
 
 ---
 
 ## Table of Contents
 
-1. [Approach Options](#1-approach-options)
-2. [Recommended Architecture](#2-recommended-architecture)
-3. [Phase 1: Project Setup](#phase-1-project-setup)
-4. [Phase 2: Design System Migration](#phase-2-design-system-migration)
-5. [Phase 3: StoreKit 2 Implementation](#phase-3-storekit-2-implementation)
-6. [Phase 4: Core Features Migration](#phase-4-core-features-migration)
-7. [Phase 5: UI Components Migration](#phase-5-ui-components-migration)
-8. [Phase 6: iOS Features Migration](#phase-6-ios-features-migration)
-9. [Phase 7: Testing & Deployment](#phase-7-testing-deployment)
-10. [File-by-File Migration Map](#file-by-file-migration-map)
-11. [Dependencies Comparison](#dependencies-comparison)
-12. [Risk Assessment](#risk-assessment)
+1. [Monorepo Architecture](#1-monorepo-architecture)
+2. [iOS App: Swift + StoreKit 2](#2-ios-app-swift--storekit-2)
+3. [Web App: Next.js + Cloudflare Pages](#3-web-app-nextjs--cloudflare-pages)
+4. [API: Hono + Cloudflare Workers](#4-api-hono--cloudflare-workers)
+5. [Shared Packages](#5-shared-packages)
+6. [Phase 1: Monorepo Setup](#phase-1-monorepo-setup)
+7. [Phase 2: iOS App Implementation](#phase-2-ios-app-implementation)
+8. [Phase 3: API Backend Implementation](#phase-3-api-backend-implementation)
+9. [Phase 4: Web App Implementation](#phase-4-web-app-implementation)
+10. [Phase 5: Integration & Testing](#phase-5-integration--testing)
+11. [Deployment Strategy](#deployment-strategy)
+12. [Migration Checklist](#migration-checklist)
 
 ---
 
-## 1. Approach Options
+## 1. Monorepo Architecture
 
-### Option A: Full Native Swift/SwiftUI (RECOMMENDED)
+### Overview
 
-**Pros:**
-
-- Full access to all iOS APIs (widgets, Live Activities, App Intents)
-- Best performance and battery life
-- StoreKit 2 integrates natively
-- Xcode debugging and testing
-- App Clips, SharePlay, and future iOS features
-
-**Cons:**
-
-- iOS only (no Android)
-- Larger rewrite effort
-- Need to recreate UI components in SwiftUI
-
-### Option B: Expo Dev Client + Native Modules
-
-**Pros:**
-
-- Keep React Native codebase
-- Add StoreKit 2 via native module
-- Test widgets via Xcode
-- Cross-platform potential
-
-**Cons:**
-
-- Still have React Native overhead
-- Bridging complexity
-- Two languages to maintain
-
-### Option C: React Native Bare Workflow
-
-**Pros:**
-
-- Keep most existing code
-- More native access than Expo Go
-
-**Cons:**
-
-- Still can't use StoreKit 2 directly without a bridge
-- RevenueCat replacement would need custom module
-
----
-
-## 2. Recommended Architecture
-
-**Approach: Full Native Swift/SwiftUI (Option A)**
+A **Turborepo monorepo** structure that houses all applications and shared code:
 
 ```
-ios-swift-starter/
-├── App/
-│   ├── SwiftStarterApp.swift          # @main entry point
-│   ├── AppDelegate.swift              # App lifecycle (optional)
-│   └── ContentView.swift              # Root view with navigation
-├── Features/
-│   ├── Auth/
-│   │   ├── AuthManager.swift          # Auth state management
-│   │   ├── LoginView.swift
-│   │   ├── SignupView.swift
-│   │   └── BiometricAuth.swift
-│   ├── Payments/
-│   │   ├── StoreManager.swift         # StoreKit 2 manager
-│   │   ├── PaywallView.swift
-│   │   ├── SubscriptionStatusView.swift
-│   │   ├── ProductCard.swift
-│   │   └── PremiumGate.swift
-│   ├── Home/
-│   │   └── HomeView.swift
-│   ├── Profile/
-│   │   └── ProfileView.swift
-│   ├── Settings/
-│   │   └── SettingsView.swift
-│   └── Onboarding/
-│       └── OnboardingView.swift
-├── Core/
-│   ├── Theme/
-│   │   ├── Theme.swift                # Design tokens from Tailwind
-│   │   ├── Colors.swift               # Color palette
-│   │   ├── Typography.swift           # Font styles
-│   │   ├── Spacing.swift              # Spacing scale
-│   │   └── ViewModifiers.swift        # Reusable modifiers
-│   ├── Storage/
-│   │   ├── StorageManager.swift       # UserDefaults wrapper
-│   │   ├── KeychainManager.swift      # Secure storage
-│   │   └── CacheManager.swift
-│   ├── Network/
-│   │   ├── APIClient.swift
-│   │   └── NetworkMonitor.swift
-│   ├── Analytics/
-│   │   └── AnalyticsManager.swift
-│   └── Utils/
-│       ├── Logger.swift
-│       ├── Validation.swift
-│       └── Extensions.swift
-├── Components/
-│   ├── Buttons/
-│   │   ├── PrimaryButton.swift
-│   │   ├── SecondaryButton.swift
-│   │   └── IconButton.swift
-│   ├── Cards/
-│   │   ├── Card.swift
-│   │   └── ProductCard.swift
-│   ├── Forms/
-│   │   ├── TextField.swift
-│   │   ├── SecureField.swift
-│   │   └── FormField.swift
-│   ├── Feedback/
-│   │   ├── Toast.swift
-│   │   ├── LoadingView.swift
-│   │   └── EmptyState.swift
-│   └── Navigation/
-│       └── CustomTabBar.swift
-├── Widgets/
-│   ├── WidgetBundle.swift
-│   ├── HomeWidget.swift
-│   ├── LockScreenWidget.swift
-│   ├── InteractiveWidget.swift
-│   └── LiveActivity.swift
-├── Resources/
-│   ├── Assets.xcassets/
-│   ├── Localizable.strings
-│   └── Products.storekit            # StoreKit config file
-├── Configuration/
-│   ├── Config.swift                 # Environment config
-│   ├── FeatureFlags.swift
-│   └── ProductConfig.swift
-└── Tests/
-    ├── UnitTests/
-    └── UITests/
+swift-starter-kit/
+├── apps/
+│   ├── ios/                          # Native Swift iOS app
+│   ├── web/                          # Next.js on Cloudflare Pages
+│   └── api/                          # Hono on Cloudflare Workers
+├── packages/
+│   ├── shared/                       # Shared types & utilities
+│   ├── ui/                           # Shared React components (web)
+│   └── config/                       # Shared configurations
+├── tooling/
+│   ├── eslint/                       # ESLint configurations
+│   ├── typescript/                   # TypeScript configurations
+│   └── tailwind/                     # Tailwind preset
+├── turbo.json                        # Turborepo configuration
+├── package.json                      # Root package.json
+├── pnpm-workspace.yaml               # pnpm workspaces
+└── README.md
+```
+
+### Tech Stack Summary
+
+| Layer        | Technology                         | Deployment         |
+| ------------ | ---------------------------------- | ------------------ |
+| **iOS App**  | Swift/SwiftUI, StoreKit 2          | App Store          |
+| **Web App**  | Next.js 15, Tailwind CSS, React 19 | Cloudflare Pages   |
+| **API**      | Hono, Drizzle ORM                  | Cloudflare Workers |
+| **Database** | D1 (SQLite) or Turso               | Cloudflare/Turso   |
+| **Auth**     | Better Auth or Lucia               | Self-hosted        |
+| **Shared**   | TypeScript, Zod                    | NPM workspace      |
+
+---
+
+## 2. iOS App: Swift + StoreKit 2
+
+### Structure
+
+```
+apps/ios/
+├── SwiftStarter/
+│   ├── App/
+│   │   ├── SwiftStarterApp.swift          # @main entry point
+│   │   ├── AppDelegate.swift              # App lifecycle
+│   │   └── ContentView.swift              # Root navigation
+│   ├── Features/
+│   │   ├── Auth/
+│   │   │   ├── AuthManager.swift          # Auth state (syncs with API)
+│   │   │   ├── LoginView.swift
+│   │   │   ├── SignupView.swift
+│   │   │   └── BiometricAuth.swift
+│   │   ├── Payments/
+│   │   │   ├── StoreManager.swift         # StoreKit 2 manager
+│   │   │   ├── PaywallView.swift
+│   │   │   ├── SubscriptionStatusView.swift
+│   │   │   ├── ProductCard.swift
+│   │   │   └── PremiumGate.swift
+│   │   ├── Home/
+│   │   │   └── HomeView.swift
+│   │   ├── Profile/
+│   │   │   └── ProfileView.swift
+│   │   ├── Settings/
+│   │   │   └── SettingsView.swift
+│   │   └── Onboarding/
+│   │       └── OnboardingView.swift
+│   ├── Core/
+│   │   ├── Theme/
+│   │   │   ├── Theme.swift                # Tailwind tokens → Swift
+│   │   │   ├── Colors.swift
+│   │   │   ├── Typography.swift
+│   │   │   ├── Spacing.swift
+│   │   │   └── ViewModifiers.swift
+│   │   ├── Storage/
+│   │   │   ├── StorageManager.swift
+│   │   │   └── KeychainManager.swift
+│   │   ├── Network/
+│   │   │   ├── APIClient.swift            # Talks to Hono API
+│   │   │   └── NetworkMonitor.swift
+│   │   └── Analytics/
+│   │       └── AnalyticsManager.swift
+│   ├── Components/
+│   │   ├── Buttons/
+│   │   ├── Cards/
+│   │   ├── Forms/
+│   │   ├── Feedback/
+│   │   └── Navigation/
+│   ├── Widgets/
+│   │   ├── WidgetBundle.swift
+│   │   ├── HomeWidget.swift
+│   │   ├── LockScreenWidget.swift
+│   │   ├── InteractiveWidget.swift
+│   │   └── LiveActivity.swift
+│   └── Resources/
+│       ├── Assets.xcassets/
+│       ├── Localizable.strings
+│       └── Products.storekit
+├── SwiftStarterTests/
+├── SwiftStarterUITests/
+├── SwiftStarter.xcodeproj
+└── Package.swift                          # SPM dependencies
+```
+
+### Key Features
+
+- **StoreKit 2** for native in-app purchases (no RevenueCat fees)
+- **Server-side receipt validation** via Hono API
+- **Widgets**: Home screen, Lock screen, Interactive (iOS 17+)
+- **Live Activities**: Dynamic Island support
+- **App Intents**: Siri Shortcuts integration
+- **Biometrics**: Face ID / Touch ID
+- **Push Notifications**: APNs integration
+
+---
+
+## 3. Web App: Next.js + Cloudflare Pages
+
+### Structure
+
+```
+apps/web/
+├── src/
+│   ├── app/                              # App Router
+│   │   ├── (auth)/
+│   │   │   ├── login/page.tsx
+│   │   │   ├── signup/page.tsx
+│   │   │   └── layout.tsx
+│   │   ├── (dashboard)/
+│   │   │   ├── page.tsx                  # Home
+│   │   │   ├── settings/page.tsx
+│   │   │   ├── profile/page.tsx
+│   │   │   └── layout.tsx
+│   │   ├── (marketing)/
+│   │   │   ├── page.tsx                  # Landing page
+│   │   │   ├── pricing/page.tsx
+│   │   │   └── layout.tsx
+│   │   ├── api/                          # API routes (optional)
+│   │   ├── layout.tsx
+│   │   └── globals.css
+│   ├── components/
+│   │   ├── ui/                           # shadcn/ui components
+│   │   ├── forms/
+│   │   ├── layout/
+│   │   └── marketing/
+│   ├── lib/
+│   │   ├── api.ts                        # API client (calls Hono)
+│   │   ├── auth.ts                       # Auth helpers
+│   │   ├── utils.ts
+│   │   └── validations.ts
+│   ├── hooks/
+│   │   ├── use-auth.ts
+│   │   ├── use-subscription.ts
+│   │   └── use-api.ts
+│   └── styles/
+│       └── globals.css
+├── public/
+├── next.config.ts
+├── tailwind.config.ts                    # Uses shared preset
+├── tsconfig.json
+├── package.json
+└── wrangler.toml                         # Cloudflare Pages config
+```
+
+### Key Features
+
+- **Next.js 15** with App Router and Server Components
+- **Tailwind CSS** with shared design tokens
+- **shadcn/ui** component library
+- **Stripe** for web payments (complements StoreKit on iOS)
+- **Better Auth** or **Lucia** for authentication
+- **Edge-first** deployment on Cloudflare Pages
+
+---
+
+## 4. API: Hono + Cloudflare Workers
+
+### Structure
+
+```
+apps/api/
+├── src/
+│   ├── index.ts                          # Main entry point
+│   ├── routes/
+│   │   ├── auth.ts                       # Auth endpoints
+│   │   ├── users.ts                      # User management
+│   │   ├── subscriptions.ts              # Subscription management
+│   │   ├── webhooks/
+│   │   │   ├── stripe.ts                 # Stripe webhooks
+│   │   │   └── apple.ts                  # App Store Server Notifications
+│   │   └── index.ts                      # Route aggregator
+│   ├── middleware/
+│   │   ├── auth.ts                       # JWT validation
+│   │   ├── cors.ts
+│   │   ├── rate-limit.ts
+│   │   └── logger.ts
+│   ├── db/
+│   │   ├── schema.ts                     # Drizzle schema
+│   │   ├── migrations/
+│   │   └── index.ts                      # DB client
+│   ├── services/
+│   │   ├── auth.service.ts
+│   │   ├── user.service.ts
+│   │   ├── subscription.service.ts
+│   │   └── apple-receipt.service.ts      # StoreKit receipt validation
+│   ├── lib/
+│   │   ├── jwt.ts
+│   │   ├── hash.ts
+│   │   └── errors.ts
+│   └── types/
+│       └── env.d.ts                      # Cloudflare bindings
+├── drizzle.config.ts
+├── wrangler.toml                         # Cloudflare Workers config
+├── package.json
+└── tsconfig.json
+```
+
+### API Routes
+
+```typescript
+// Main API structure
+GET    /health                    # Health check
+POST   /auth/register             # User registration
+POST   /auth/login                # Login (email/password)
+POST   /auth/login/apple          # Sign in with Apple
+POST   /auth/refresh              # Refresh token
+POST   /auth/logout               # Logout
+
+GET    /users/me                  # Get current user
+PATCH  /users/me                  # Update profile
+DELETE /users/me                  # Delete account
+
+GET    /subscriptions/status      # Get subscription status
+POST   /subscriptions/verify      # Verify App Store receipt
+POST   /subscriptions/sync        # Sync with App Store
+
+POST   /webhooks/stripe           # Stripe webhook
+POST   /webhooks/apple            # App Store Server Notifications v2
+```
+
+### Database Schema (Drizzle)
+
+```typescript
+// apps/api/src/db/schema.ts
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey(),
+  email: text('email').unique().notNull(),
+  passwordHash: text('password_hash'),
+  appleUserId: text('apple_user_id').unique(),
+  name: text('name'),
+  avatarUrl: text('avatar_url'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
+export const sessions = sqliteTable('sessions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .references(() => users.id)
+    .notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+});
+
+export const subscriptions = sqliteTable('subscriptions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .references(() => users.id)
+    .notNull(),
+  productId: text('product_id').notNull(),
+  platform: text('platform').notNull(), // 'ios' | 'web'
+  status: text('status').notNull(), // 'active' | 'expired' | 'cancelled'
+  originalTransactionId: text('original_transaction_id'),
+  stripeSubscriptionId: text('stripe_subscription_id'),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
+export const receipts = sqliteTable('receipts', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .references(() => users.id)
+    .notNull(),
+  transactionId: text('transaction_id').notNull(),
+  productId: text('product_id').notNull(),
+  purchaseDate: integer('purchase_date', { mode: 'timestamp' }).notNull(),
+  expiresDate: integer('expires_date', { mode: 'timestamp' }),
+  environment: text('environment').notNull(), // 'sandbox' | 'production'
+  rawReceipt: text('raw_receipt'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+});
 ```
 
 ---
 
-## Phase 1: Project Setup
+## 5. Shared Packages
 
-### 1.1 Create New Xcode Project
+### packages/shared
 
-**Tasks:**
+```
+packages/shared/
+├── src/
+│   ├── types/
+│   │   ├── user.ts
+│   │   ├── subscription.ts
+│   │   ├── auth.ts
+│   │   └── api.ts
+│   ├── schemas/
+│   │   ├── auth.schema.ts              # Zod schemas
+│   │   ├── user.schema.ts
+│   │   └── subscription.schema.ts
+│   ├── constants/
+│   │   ├── products.ts                 # Product IDs
+│   │   ├── entitlements.ts
+│   │   └── errors.ts
+│   └── utils/
+│       ├── formatters.ts
+│       └── validators.ts
+├── package.json
+└── tsconfig.json
+```
 
-- [ ] Create new Xcode project (iOS App, SwiftUI, Swift)
-- [ ] Set deployment target: iOS 16.0 (for widgets, Live Activities)
-- [ ] Configure bundle identifier: `com.yourcompany.swiftStarter`
-- [ ] Add Widget Extension target
-- [ ] Add App Intent Extension (for interactive widgets)
-- [ ] Configure signing & capabilities
+### Example Shared Types
 
-**Capabilities to add:**
+```typescript
+// packages/shared/src/types/subscription.ts
+export type SubscriptionPlatform = 'ios' | 'web';
+export type SubscriptionStatus = 'active' | 'expired' | 'cancelled' | 'trial';
 
-- In-App Purchase
-- Push Notifications
-- Background Modes
-- App Groups (for widget data sharing)
-- Sign in with Apple
-
-### 1.2 Project Configuration
-
-**Files to create:**
-
-```swift
-// Configuration/Config.swift
-enum Environment {
-    case development
-    case staging
-    case production
-
-    static var current: Environment {
-        #if DEBUG
-        return .development
-        #else
-        return .production
-        #endif
-    }
+export interface Subscription {
+  id: string;
+  userId: string;
+  productId: string;
+  platform: SubscriptionPlatform;
+  status: SubscriptionStatus;
+  expiresAt: Date | null;
+  createdAt: Date;
 }
 
-struct Config {
-    static let appStoreId = "YOUR_APP_STORE_ID"
-    static let appGroupId = "group.com.yourcompany.swiftStarter"
-    static let universalLinkDomain = "yourapp.com"
-
-    // StoreKit Product IDs (replace RevenueCat offering)
-    struct Products {
-        static let monthlyPremium = "com.yourcompany.premium.monthly"
-        static let yearlyPremium = "com.yourcompany.premium.yearly"
-        static let lifetimePremium = "com.yourcompany.premium.lifetime"
-    }
+export interface SubscriptionStatus {
+  isPremium: boolean;
+  subscription: Subscription | null;
+  expiresAt: Date | null;
 }
 ```
 
-### 1.3 Dependencies (Swift Package Manager)
+```typescript
+// packages/shared/src/schemas/auth.schema.ts
+import { z } from 'zod';
 
-**Add via Xcode → File → Add Package Dependencies:**
+export const loginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
 
-| Package        | Purpose               | URL                                                  |
-| -------------- | --------------------- | ---------------------------------------------------- |
-| SwiftLint      | Code linting          | `https://github.com/realm/SwiftLint`                 |
-| Sentry         | Crash reporting       | `https://github.com/getsentry/sentry-cocoa`          |
-| Kingfisher     | Image loading/caching | `https://github.com/onevcat/Kingfisher`              |
-| KeychainAccess | Secure storage        | `https://github.com/kishikawakatsumi/KeychainAccess` |
+export const signupSchema = loginSchema
+  .extend({
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
 
-**Built-in frameworks (no packages needed):**
+export type LoginInput = z.infer<typeof loginSchema>;
+export type SignupInput = z.infer<typeof signupSchema>;
+```
 
-- StoreKit 2 (native)
-- WidgetKit (native)
-- ActivityKit (native)
-- LocalAuthentication (for biometrics)
+### packages/config (Tailwind Preset)
+
+```typescript
+// packages/config/tailwind/preset.ts
+import type { Config } from 'tailwindcss';
+
+export const sharedPreset: Partial<Config> = {
+  theme: {
+    extend: {
+      colors: {
+        primary: '#0a7ea4',
+        secondary: '#6b7280',
+        accent: '#8b5cf6',
+        success: '#22c55e',
+        warning: '#f59e0b',
+        danger: '#ef4444',
+        info: '#3b82f6',
+      },
+      spacing: {
+        '4.5': '18px',
+        '13': '52px',
+        '15': '60px',
+        '18': '72px',
+        '22': '88px',
+      },
+      borderRadius: {
+        DEFAULT: '8px',
+        sm: '6px',
+        md: '10px',
+        lg: '12px',
+        xl: '16px',
+        '2xl': '20px',
+        '3xl': '24px',
+      },
+      fontSize: {
+        xxs: ['10px', { lineHeight: '14px' }],
+      },
+    },
+  },
+};
+```
+
+---
+
+## Phase 1: Monorepo Setup
+
+### 1.1 Initialize Monorepo
+
+```bash
+# Create project directory
+mkdir swift-starter-kit && cd swift-starter-kit
+
+# Initialize pnpm workspace
+pnpm init
+
+# Create workspace structure
+mkdir -p apps/{ios,web,api}
+mkdir -p packages/{shared,config}
+mkdir -p tooling/{eslint,typescript,tailwind}
+```
+
+### 1.2 Root Configuration Files
+
+**pnpm-workspace.yaml:**
+
+```yaml
+packages:
+  - 'apps/*'
+  - 'packages/*'
+  - 'tooling/*'
+```
+
+**turbo.json:**
+
+```json
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["**/.env.*local"],
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {},
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "db:generate": {
+      "cache": false
+    },
+    "db:push": {
+      "cache": false
+    },
+    "deploy": {
+      "dependsOn": ["build"]
+    }
+  }
+}
+```
+
+**package.json (root):**
+
+```json
+{
+  "name": "swift-starter-kit",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:web": "turbo dev --filter=@starter/web",
+    "dev:api": "turbo dev --filter=@starter/api",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "db:generate": "turbo db:generate",
+    "db:push": "turbo db:push",
+    "deploy": "turbo deploy"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
+```
+
+### 1.3 Shared Packages Setup
+
+**packages/shared/package.json:**
+
+```json
+{
+  "name": "@starter/shared",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
+```
+
+**packages/config/package.json:**
+
+```json
+{
+  "name": "@starter/config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./tailwind": "./tailwind/preset.ts",
+    "./eslint": "./eslint/base.js",
+    "./typescript": "./typescript/base.json"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}
+```
 
 ---
 
@@ -1927,86 +2270,307 @@ dependencies: [
 
 ---
 
-## Migration Checklist
+## Deployment Strategy
 
-### Pre-Migration
+### Infrastructure Overview
 
-- [ ] Export all assets from Expo project
-- [ ] Document all API endpoints (if any)
-- [ ] Create App Store Connect products
-- [ ] Set up StoreKit configuration file
-- [ ] Configure App Groups in developer portal
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        CLOUDFLARE                                │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────┐  │
+│  │   Pages     │    │   Workers   │    │        D1          │  │
+│  │  (Next.js)  │───▶│   (Hono)    │───▶│   (SQLite DB)      │  │
+│  │             │    │             │    │                     │  │
+│  └─────────────┘    └─────────────┘    └─────────────────────┘  │
+│         │                  │                                     │
+│         │                  │                                     │
+│         ▼                  ▼                                     │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                    KV / R2 Storage                          ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+                              ▲
+                              │
+              ┌───────────────┴───────────────┐
+              │                               │
+        ┌─────────────┐               ┌─────────────┐
+        │   iOS App   │               │   Browser   │
+        │  (StoreKit) │               │   (Stripe)  │
+        └─────────────┘               └─────────────┘
+```
 
-### Phase 1: Setup
+### Environment Configuration
 
-- [ ] Create Xcode project
-- [ ] Add Swift packages
-- [ ] Configure signing
-- [ ] Add capabilities
-- [ ] Set up widget target
+**apps/api/wrangler.toml:**
 
-### Phase 2: Theme
+```toml
+name = "starter-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
 
-- [ ] Migrate colors
-- [ ] Migrate typography
-- [ ] Migrate spacing
-- [ ] Create view modifiers
-- [ ] Test dark mode
+[vars]
+ENVIRONMENT = "production"
 
-### Phase 3: StoreKit
+[[d1_databases]]
+binding = "DB"
+database_name = "starter-db"
+database_id = "your-database-id"
 
-- [ ] Implement StoreManager
-- [ ] Test sandbox purchases
-- [ ] Implement restore
-- [ ] Handle edge cases
-- [ ] Test subscription renewals
+[[kv_namespaces]]
+binding = "CACHE"
+id = "your-kv-id"
 
-### Phase 4: Core
+[env.staging]
+name = "starter-api-staging"
+vars = { ENVIRONMENT = "staging" }
 
-- [ ] Implement AuthManager
-- [ ] Implement StorageManager
-- [ ] Implement NetworkMonitor
-- [ ] Implement Analytics
-- [ ] Test biometrics
+[env.development]
+name = "starter-api-dev"
+vars = { ENVIRONMENT = "development" }
+```
 
-### Phase 5: UI
+**apps/web/wrangler.toml:**
 
-- [ ] Migrate buttons
-- [ ] Migrate cards
-- [ ] Migrate forms
-- [ ] Migrate navigation
-- [ ] Migrate paywall
+```toml
+name = "starter-web"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = ".vercel/output/static"
 
-### Phase 6: iOS Features
+[vars]
+NEXT_PUBLIC_API_URL = "https://api.yourapp.com"
+```
 
-- [ ] Update widgets
-- [ ] Implement Live Activities
-- [ ] Implement App Intents
-- [ ] Implement background tasks
-- [ ] Test deep links
+### CI/CD Pipeline
 
-### Phase 7: Testing
+**.github/workflows/deploy.yml:**
 
-- [ ] Unit tests
-- [ ] UI tests
-- [ ] StoreKit tests
-- [ ] Performance testing
-- [ ] App Store submission
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  deploy-api:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install
+      - name: Deploy API to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: apps/api
+
+  deploy-web:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install
+      - run: pnpm build --filter=@starter/web
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: pages deploy apps/web/.vercel/output/static --project-name=starter-web
+
+  build-ios:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.2.app
+      - name: Build iOS
+        run: |
+          cd apps/ios
+          xcodebuild build \
+            -scheme SwiftStarter \
+            -destination 'generic/platform=iOS' \
+            -configuration Release
+      - name: Deploy to TestFlight
+        if: github.event_name == 'push'
+        run: |
+          cd apps/ios
+          fastlane beta
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.ASC_API_KEY }}
+```
+
+### Database Migrations
+
+```bash
+# Generate migration
+pnpm --filter @starter/api db:generate
+
+# Push to D1
+pnpm --filter @starter/api db:push
+
+# For production, use wrangler
+cd apps/api
+wrangler d1 migrations apply starter-db --remote
+```
 
 ---
 
-## Questions Before Proceeding
+## Migration Checklist
 
-Before implementing this plan, please confirm:
+### Phase 1: Monorepo Setup
 
-1. **iOS Only?** - This plan is iOS-only. Do you need Android support? (Would require keeping React Native or separate Kotlin app)
+- [ ] Initialize Turborepo with pnpm workspaces
+- [ ] Set up shared packages (types, config, validation)
+- [ ] Configure Tailwind preset for shared theme
+- [ ] Set up ESLint and TypeScript configs
+- [ ] Create root scripts for dev/build/deploy
 
-2. **Minimum iOS Version?** - Recommended iOS 16.0 for full widget/Live Activity support. Could go iOS 15.0 with reduced features.
+### Phase 2: API Backend (Hono + Cloudflare)
 
-3. **Backend API?** - The current app is backend-less. Will the Swift version also be backend-less?
+- [ ] Initialize Hono app with TypeScript
+- [ ] Set up Drizzle ORM with D1 schema
+- [ ] Implement auth routes (register, login, Apple Sign In)
+- [ ] Implement user routes
+- [ ] Implement subscription routes
+- [ ] Add App Store receipt validation service
+- [ ] Add Stripe webhook handler
+- [ ] Add Apple Server Notifications webhook
+- [ ] Configure rate limiting and CORS
+- [ ] Write API tests
+- [ ] Deploy to Cloudflare Workers
 
-4. **Analytics Provider?** - Currently using local analytics. Do you want to add a provider (Mixpanel, Amplitude, etc.)?
+### Phase 3: iOS App (Swift + StoreKit 2)
 
-5. **Existing App Store Products?** - Do you have products already set up in App Store Connect, or do we need to create new ones?
+- [ ] Create Xcode project in apps/ios
+- [ ] Implement SwiftUI theme (from Tailwind tokens)
+- [ ] Implement StoreManager with StoreKit 2
+- [ ] Connect to Hono API for auth
+- [ ] Implement server-side receipt validation
+- [ ] Build auth screens (login, signup, biometrics)
+- [ ] Build main screens (home, profile, settings)
+- [ ] Build paywall with product selection
+- [ ] Implement widgets (home, lock screen, interactive)
+- [ ] Implement Live Activities
+- [ ] Add App Intents for Siri
+- [ ] Write unit and UI tests
+- [ ] Configure App Store Connect products
+- [ ] Submit to TestFlight
 
-6. **Timeline Priority?** - Which features are critical for v1.0 vs can be added later?
+### Phase 4: Web App (Next.js + Cloudflare Pages)
+
+- [ ] Initialize Next.js 15 with App Router
+- [ ] Configure Tailwind with shared preset
+- [ ] Set up shadcn/ui components
+- [ ] Implement auth pages
+- [ ] Implement dashboard pages
+- [ ] Implement marketing pages (landing, pricing)
+- [ ] Add Stripe integration for web payments
+- [ ] Connect to Hono API
+- [ ] Write tests
+- [ ] Deploy to Cloudflare Pages
+
+### Phase 5: Integration & Polish
+
+- [ ] Test cross-platform subscription sync
+- [ ] Test iOS receipt validation flow
+- [ ] Test Stripe + App Store subscription parity
+- [ ] Add error tracking (Sentry)
+- [ ] Add analytics
+- [ ] Performance optimization
+- [ ] Security audit
+- [ ] Documentation
+
+### Phase 6: Deployment
+
+- [ ] Set up Cloudflare account and D1 database
+- [ ] Configure environment secrets in GitHub
+- [ ] Set up App Store Connect
+- [ ] Configure Stripe production keys
+- [ ] Deploy API to production
+- [ ] Deploy web to production
+- [ ] Submit iOS to App Store review
+
+---
+
+## Summary
+
+This plan transforms the Expo + RevenueCat starter into a **production-ready full-stack monorepo**:
+
+| Component          | Before              | After                        |
+| ------------------ | ------------------- | ---------------------------- |
+| **iOS App**        | Expo + React Native | Native Swift/SwiftUI         |
+| **Payments (iOS)** | RevenueCat          | StoreKit 2 (native)          |
+| **Payments (Web)** | N/A                 | Stripe                       |
+| **Backend**        | None (local only)   | Hono on Cloudflare Workers   |
+| **Database**       | AsyncStorage        | D1 (SQLite)                  |
+| **Web App**        | N/A                 | Next.js on Cloudflare Pages  |
+| **Styling**        | NativeWind          | SwiftUI Theme + Tailwind CSS |
+| **Auth**           | Local               | Server-side with sessions    |
+
+### Key Benefits
+
+1. **No RevenueCat fees** - Direct StoreKit 2 integration
+2. **Full iOS feature access** - Widgets, Live Activities, App Intents
+3. **Edge-first backend** - Cloudflare Workers for low latency globally
+4. **Unified subscription management** - Single source of truth across platforms
+5. **Type-safe across stack** - Shared TypeScript/Zod schemas
+6. **Consistent design** - Tailwind tokens shared between web and iOS
+
+### Getting Started
+
+```bash
+# Clone and install
+git clone <repo> swift-starter-kit
+cd swift-starter-kit
+pnpm install
+
+# Start development
+pnpm dev           # Start all apps
+pnpm dev:api       # API only
+pnpm dev:web       # Web only
+
+# iOS development (requires macOS)
+cd apps/ios
+open SwiftStarter.xcodeproj
+```
