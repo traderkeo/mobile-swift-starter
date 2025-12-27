@@ -1,0 +1,13 @@
+{
+  "name": "@starter/config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./tailwind": "./tailwind/preset.js",
+    "./typescript/base.json": "./typescript/base.json",
+    "./eslint": "./eslint/base.js"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.18"
+  }
+}

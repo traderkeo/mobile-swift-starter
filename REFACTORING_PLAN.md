@@ -2460,11 +2460,11 @@ wrangler d1 migrations apply starter-db --remote
 
 ### Phase 1: Monorepo Setup
 
-- [ ] Initialize Turborepo with pnpm workspaces
-- [ ] Set up shared packages (types, config, validation)
-- [ ] Configure Tailwind preset for shared theme
-- [ ] Set up ESLint and TypeScript configs
-- [ ] Create root scripts for dev/build/deploy
+- [x] Initialize Turborepo with pnpm workspaces
+- [x] Set up shared packages (types, config, validation)
+- [x] Configure Tailwind preset for shared theme
+- [x] Set up ESLint and TypeScript configs
+- [x] Create root scripts for dev/build/deploy
 
 ### Phase 2: API Backend (Hono + Cloudflare)
 
