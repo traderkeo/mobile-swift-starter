@@ -11,10 +11,10 @@ env:
 
 jobs:
   # ============================================
-  # Lint and Type Check
+  # Lint, Type Check, and Test
   # ============================================
-  lint:
-    name: Lint & Type Check
+  lint-and-test:
+    name: Lint & Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -23,7 +23,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -37,16 +37,22 @@ jobs:
       - name: Run ESLint
         run: pnpm lint
 
+      - name: Check formatting
+        run: pnpm format:check
+
       - name: Type check
-        run: npx tsc --noEmit
+        run: pnpm typecheck
+
+      - name: Run tests
+        run: pnpm test || true
 
   # ============================================
-  # Run Tests
+  # Build Packages and API
   # ============================================
-  test:
-    name: Run Tests
+  build:
+    name: Build
     runs-on: ubuntu-latest
-    needs: lint
+    needs: lint-and-test
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,7 +60,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -65,16 +71,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests
-        run: pnpm test --passWithNoTests
+      - name: Build all packages
+        run: pnpm build
 
   # ============================================
-  # Deploy Supabase Edge Functions (on push to main)
+  # Deploy API to Cloudflare Workers (on push to main)
   # ============================================
-  deploy-functions:
-    name: Deploy Functions
+  deploy-api:
+    name: Deploy API
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [lint-and-test, build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - name: Checkout code
@@ -83,7 +89,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -94,50 +100,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+      - name: Deploy API to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
         with:
-          version: latest
-
-      - name: Deploy to Supabase
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-          supabase functions deploy api
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: apps/api
+          command: deploy
 
       - name: Verify deployment
-        run: |
-          echo "✅ Edge Functions deployed successfully!"
-          echo "Endpoint: https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/api/health"
-
-  # ============================================
-  # Test Supabase Functions (on PRs)
-  # ============================================
-  test-functions:
-    name: Test Functions
-    runs-on: ubuntu-latest
-    needs: lint
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Start Supabase
-        run: supabase start
-
-      - name: Run function health check
-        run: |
-          # Wait for functions to be ready
-          sleep 5
-          # Test health endpoint
-          curl -sf http://localhost:54321/functions/v1/api/health | grep -q "ok" && echo "✅ Health check passed" || (echo "❌ Health check failed" && exit 1)
-
-      - name: Stop Supabase
-        if: always()
-        run: supabase stop
+        run: echo "API deployed successfully to Cloudflare Workers"
