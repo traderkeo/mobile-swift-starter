@@ -1,0 +1,29 @@
+# Logout Flow E2E Test
+# Run: maestro test .maestro/auth/logout-flow.yaml
+
+appId: com.yourcompany.dodoexpo
+name: Logout Flow
+
+---
+# Assume user is already logged in
+- waitForAnimationToEnd
+
+# Navigate to Settings tab
+- tapOn: 'Settings'
+- waitForAnimationToEnd
+
+# Scroll to find Sign Out button
+- scrollUntilVisible:
+    element: 'Sign Out'
+    direction: DOWN
+
+# Tap Sign Out
+- tapOn: 'Sign Out'
+
+# Confirm logout in alert
+- tapOn: 'Sign Out'
+
+# Verify we're back on login screen
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: 'Sign In'

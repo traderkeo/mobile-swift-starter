@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+workers/node_modules/
+
+# Build outputs
+dist/
+.expo/
+android/
+ios/
+
+# Generated files
+*.lock
+package-lock.json
+
+# Environment files
+.env*
+
+# IDE
+.idea/
+.vscode/

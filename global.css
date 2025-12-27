@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * ===========================================
+ * Custom CSS Layer - Add project-specific styles here
+ * ===========================================
+ */
+
+@layer components {
+  /**
+   * Example custom component classes
+   * Uncomment and customize as needed
+   */
+
+  /* .btn-primary {
+    @apply bg-primary text-white font-semibold py-3 px-5 rounded-lg active:opacity-70;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary-100 text-foreground font-semibold py-3 px-5 rounded-lg active:opacity-70;
+  }
+
+  .card-elevated {
+    @apply bg-background rounded-xl p-4 shadow-card;
+  }
+
+  .input-field {
+    @apply bg-background-secondary border border-border rounded-lg px-4 py-3 text-foreground;
+  } */
+}
+
+@layer utilities {
+  /**
+   * Custom utility classes
+   */
+
+  /* Add custom utilities here */
+}
